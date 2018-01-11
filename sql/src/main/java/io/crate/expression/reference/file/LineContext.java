@@ -22,17 +22,20 @@
 package io.crate.expression.reference.file;
 
 import io.crate.metadata.ColumnIdent;
+import io.crate.operation.collect.files.CSVLineParser;
 import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentType;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 public class LineContext {
 
-    private byte[] rawSource;
+    public byte[] rawSource;
     private Map<String, Object> parsedSource;
 
     @Nullable
@@ -41,17 +44,6 @@ public class LineContext {
             return new BytesRef(rawSource);
         }
         return null;
-    }
-
-    public Map<String, Object> sourceAsMap() {
-        if (parsedSource == null) {
-            try {
-                parsedSource = XContentHelper.convertToMap(new BytesArray(rawSource), false, XContentType.JSON).v2();
-            } catch (NullPointerException e) {
-                return null;
-            }
-        }
-        return parsedSource;
     }
 
     public Object get(ColumnIdent columnIdent) {
@@ -66,8 +58,27 @@ public class LineContext {
         return val;
     }
 
+    public Map<String, Object> sourceAsMap() {
+        if (parsedSource == null) {
+            try {
+                parsedSource = XContentHelper.convertToMap(new BytesArray(rawSource), false, XContentType.JSON).v2();
+            } catch (NullPointerException e) {
+                return null;
+            }
+        }
+        return parsedSource;
+    }
+
     public void rawSource(byte[] bytes) {
         this.rawSource = bytes;
+        this.parsedSource = null;
+    }
+
+    public void rawSourceFromCSV(byte[] header, byte[] line) throws IOException {
+        CSVLineParser csvParser = new CSVLineParser();
+        String convertedCsvToJsonString = csvParser.parse(header, line);
+
+        this.rawSource = convertedCsvToJsonString.getBytes(StandardCharsets.UTF_8);
         this.parsedSource = null;
     }
 }

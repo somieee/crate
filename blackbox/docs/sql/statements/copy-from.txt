@@ -35,14 +35,32 @@ Description
 import.
 
 The nodes in the cluster will attempt to read the files available at the URI
-and import the data. These files have to be UTF-8 encoded and contain a single
-JSON object per line. Any keys in the object will be added as columns,
-regardless of the previously defined table. Empty lines are simply sikpped.
+and import the data.
 
+Supported Formats
+-----------------
+CrateDB accepts both JSON and CSV inputs. This can be specified using either the
+relevant file extension, or by providing the file type as an option (see ``WITH``
+below), which may be useful if the files do not have a `.json` or `.csv` file extension.
+In the case that a file does not have a relevant file extension and format option has not
+been provided, then by default the file with be processed as JSON.
+
+Files have to be UTF-8 encoded.  Any keys in the object will be added as columns,
+regardless of the previously defined table. Empty lines are simply skipped.
+
+JSON file inputs must contain a single JSON object per line.
 Example JSON data::
 
     {"id": 1, "quote": "Don't panic"}
     {"id": 2, "quote": "Ford, you're turning into a penguin. Stop it."}
+
+CSV file inputs must contain a header with comma-separated values, which will
+be added as columns.
+Example CSV data::
+
+    id,quote
+    1,"Don't panic"
+    2,"Ford, you're turning into a penguin. Stop it."
 
 See also: :ref:`importing_data`.
 
@@ -84,6 +102,7 @@ Is converted to:
 .. code-block:: text
 
     'file:///tmp%20folder/file.json'
+
 
 Supported Schemes
 -----------------
@@ -265,6 +284,12 @@ Default: false
 
 ``COPY FROM`` by default won't overwrite rows if a document with the same
 primary key already exists. Set to true to overwrite duplicate rows.
+
+``format``
+''''''''''''''''''''''''
+This option specifies the format of the input and can be set as
+``csv`` or ``json``. If this is not provided, and the file does not have
+a csv extension, then the file will be processed as json.
 
 .. _`AWS documentation`: http://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html
 .. _`AWS Java Documentation`: http://docs.aws.amazon.com/AmazonS3/latest/dev/AuthUsingAcctOrUserCredJava.html

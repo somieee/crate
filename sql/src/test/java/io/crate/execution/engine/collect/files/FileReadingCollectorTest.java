@@ -288,8 +288,8 @@ public class FileReadingCollectorTest extends CrateUnitTest {
                 })),
             false,
             1,
-            0
-        );
+            0,
+            null);
     }
 
     private static class WriteBufferAnswer implements Answer<Integer> {

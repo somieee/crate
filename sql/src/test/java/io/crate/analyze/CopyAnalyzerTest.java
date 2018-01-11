@@ -22,14 +22,15 @@
 package io.crate.analyze;
 
 import io.crate.analyze.relations.QueriedDocTable;
+import io.crate.execution.dsl.phases.FileUriCollectPhase;
 import io.crate.expression.symbol.Literal;
 import io.crate.exceptions.PartitionUnknownException;
 import io.crate.exceptions.SchemaUnknownException;
 import io.crate.exceptions.TableUnknownException;
 import io.crate.exceptions.UnsupportedFeatureException;
+import io.crate.execution.dsl.projection.WriterProjection;
 import io.crate.metadata.PartitionName;
 import io.crate.metadata.table.TableInfo;
-import io.crate.execution.dsl.projection.WriterProjection;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
 import io.crate.testing.SQLExecutor;
 import io.crate.types.ArrayType;
@@ -50,7 +51,7 @@ import static io.crate.testing.SymbolMatchers.isReference;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.core.IsEqual.equalTo;
+import static org.hamcrest.Matchers.equalTo;
 
 public class CopyAnalyzerTest extends CrateDummyClusterServiceUnitTest {
 
@@ -69,7 +70,7 @@ public class CopyAnalyzerTest extends CrateDummyClusterServiceUnitTest {
     }
 
     @Test
-    public void testCopyFromExistingPartitionedTable() throws Exception {
+    public void testCopyFromExistingPartitionedTable() {
         CopyFromAnalyzedStatement analysis = e.analyze("copy parted from '/some/distant/file.ext'");
         assertThat(analysis.table().ident(), is(TEST_PARTITIONED_TABLE_IDENT));
         assertThat(analysis.uri(), isLiteral("/some/distant/file.ext"));
@@ -110,6 +111,27 @@ public class CopyAnalyzerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(analysis.table().ident(), is(USER_TABLE_IDENT));
         Object value = ((Literal) analysis.uri()).value();
         assertThat(BytesRefs.toString(value), is(path));
+    }
+
+    @Test
+    public void testCopyFromWithInputFormatJson() {
+        CopyFromAnalyzedStatement analysis = e.analyze("copy users from '/some/distant/file.ext' with (format='json')");
+        assertThat(analysis.table().ident(), is(USER_TABLE_IDENT));
+        assertThat(analysis.inputFormat(), is(FileUriCollectPhase.InputFormat.JSON));
+    }
+
+    @Test
+    public void testCopyFromWithInputFormatCsv() {
+        CopyFromAnalyzedStatement analysis = e.analyze("copy users from '/some/distant/file.ext' with (format='csv')");
+        assertThat(analysis.table().ident(), is(USER_TABLE_IDENT));
+        assertThat(analysis.inputFormat(), is(FileUriCollectPhase.InputFormat.CSV));
+    }
+
+    @Test
+    public void testCopyFromWithoutInputFormat_thenDefaultsToJson() {
+        CopyFromAnalyzedStatement analysis = e.analyze("copy users from '/some/distant/file.ext'");
+        assertThat(analysis.table().ident(), is(USER_TABLE_IDENT));
+        assertThat(analysis.inputFormat(), is(FileUriCollectPhase.InputFormat.JSON));
     }
 
     @Test

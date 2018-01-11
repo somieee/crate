@@ -23,20 +23,45 @@ package io.crate.expression.reference.file;
 
 import io.crate.metadata.ColumnIdent;
 import io.crate.test.integration.CrateUnitTest;
+import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+import static org.hamcrest.CoreMatchers.is;
+
 public class LineContextTest extends CrateUnitTest {
+
+    LineContext subjectUnderTest;
+
+    @Before
+    public void setup(){
+        subjectUnderTest = new LineContext();
+    }
+
     @Test
-    public void testGet() throws Exception {
-        LineContext context = new LineContext();
-
+    public void testGet() {
         String source = "{\"name\": \"foo\", \"details\": {\"age\": 43}}";
-        context.rawSource(source.getBytes(StandardCharsets.UTF_8));
+        subjectUnderTest.rawSource(source.getBytes(StandardCharsets.UTF_8));
 
-        assertNull(context.get(new ColumnIdent("invalid", "column")));
-        assertNull(context.get(new ColumnIdent("details", "invalid")));
-        assertEquals(43, context.get(new ColumnIdent("details", "age")));
+        assertNull(subjectUnderTest.get(new ColumnIdent("invalid", "column")));
+        assertNull(subjectUnderTest.get(new ColumnIdent("details", "invalid")));
+        assertEquals(43, subjectUnderTest.get(new ColumnIdent("details", "age")));
+    }
+
+    @Test
+    public void rawSourceCSV_givenByteInputForHeaderAndRow_thenAssignsParsedJsonToRawSource() throws IOException {
+        String header = "name,id\n";
+        String line = "Arthur,4\n";
+
+        subjectUnderTest.rawSourceFromCSV(header.getBytes(StandardCharsets.UTF_8),line.getBytes(StandardCharsets.UTF_8));
+
+        thenRawSourceIsAssignedAs("{\"name\":\"Arthur\",\"id\":\"4\"}".getBytes(StandardCharsets.UTF_8));
+
+    }
+
+    private void thenRawSourceIsAssignedAs(byte[] expected) {
+        assertThat(subjectUnderTest.rawSource, is(expected));
     }
 }

@@ -45,6 +45,7 @@ public class FileUriCollectPhase extends AbstractProjectionsPhase implements Col
     private final String compression;
     private final Boolean sharedStorage;
     private DistributionInfo distributionInfo = DistributionInfo.DEFAULT_BROADCAST;
+    private InputFormat inputFormat;
 
     public FileUriCollectPhase(UUID jobId,
                                int phaseId,
@@ -54,15 +55,23 @@ public class FileUriCollectPhase extends AbstractProjectionsPhase implements Col
                                List<Symbol> toCollect,
                                List<Projection> projections,
                                String compression,
-                               Boolean sharedStorage) {
+                               Boolean sharedStorage,
+                               InputFormat inputFormat) {
         super(jobId, phaseId, name, projections);
         this.executionNodes = executionNodes;
         this.targetUri = targetUri;
         this.toCollect = toCollect;
         this.compression = compression;
         this.sharedStorage = sharedStorage;
+        this.inputFormat = inputFormat;
         outputTypes = extractOutputTypes(toCollect, projections);
     }
+
+    public enum InputFormat {
+        JSON,
+        CSV
+    }
+
 
     public Symbol targetUri() {
         return targetUri;
@@ -92,6 +101,10 @@ public class FileUriCollectPhase extends AbstractProjectionsPhase implements Col
         return compression;
     }
 
+    public InputFormat inputFormat() {
+        return inputFormat;
+    }
+
     public FileUriCollectPhase(StreamInput in) throws IOException {
         super(in);
         compression = in.readOptionalString();
@@ -105,6 +118,7 @@ public class FileUriCollectPhase extends AbstractProjectionsPhase implements Col
         }
         this.executionNodes = nodes;
         toCollect = Symbols.listFromStream(in);
+        inputFormat = InputFormat.values()[in.readVInt()];
     }
 
     @Override
@@ -118,6 +132,8 @@ public class FileUriCollectPhase extends AbstractProjectionsPhase implements Col
             out.writeString(node);
         }
         Symbols.toStream(toCollect, out);
+        out.writeVInt(inputFormat.ordinal());
+
     }
 
     @Override
@@ -129,6 +145,7 @@ public class FileUriCollectPhase extends AbstractProjectionsPhase implements Col
             .add("outputTypes", outputTypes)
             .add("compression", compression)
             .add("sharedStorageDefault", sharedStorage)
+            .add("inputFormat", inputFormat)
             .toString();
     }
 
