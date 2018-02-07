@@ -30,53 +30,63 @@ import org.apache.commons.csv.CSVRecord;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class CSVLineParser {
 
-    public static final String ILLEGAL_ARGUMENT_EX_STRING = "Number of row entries is not equal to the number of columns";
+    public byte[] parse(byte[] header, byte[] row) throws IOException {
 
-    public String parse(byte[] header, byte[] row) throws IOException {
+        ByteArrayInputStream headerInputStream = new ByteArrayInputStream(header);
+        ByteArrayInputStream rowInputStream = new ByteArrayInputStream(row);
 
+        Reader headerReader = new InputStreamReader(headerInputStream, StandardCharsets.UTF_8);
+        Reader rowReader = new InputStreamReader(rowInputStream, StandardCharsets.UTF_8);
         CSVParser headerParser = CSVFormat
             .DEFAULT
             .withFirstRecordAsHeader()
             .withTrim()
-            .parse(new InputStreamReader(new ByteArrayInputStream(header), StandardCharsets.UTF_8));
+            .parse(headerReader);
 
         CSVParser rowParser = CSVFormat
             .DEFAULT
             .withTrim()
-            .parse(new InputStreamReader(new ByteArrayInputStream(row), StandardCharsets.UTF_8));
+            .parse(rowReader);
 
-        final Set<String> keys = headerParser.getHeaderMap().keySet();
-
-        String parsedCsv = convertCSVToJsonString(keys, rowParser);
-
-        headerParser.close();
-        rowParser.close();
-        return parsedCsv;
+        try {
+            final Set<String> keys = headerParser.getHeaderMap().keySet();
+            return convertCSVToJsonString(keys, rowParser);
+        } finally {
+            headerInputStream.close();
+            rowInputStream.close();
+            headerReader.close();
+            rowReader.close();
+            headerParser.close();
+            rowParser.close();
+        }
     }
 
-    private String convertCSVToJsonString(Set<String> keys, CSVParser rowParser) throws JsonProcessingException {
+    private byte[] convertCSVToJsonString(Set<String> keys, CSVParser rowParser) throws JsonProcessingException {
         Map<String,String> mapForSingleRow = Collections.emptyMap();
 
-        for (CSVRecord rowEntries : rowParser) {
-            List<String> keyList = getListOfKeys(keys);
+        List<String> keyList = getListOfKeys(keys);
 
-            if (rowEntries.size() != keyList.size()) throw new IllegalArgumentException(ILLEGAL_ARGUMENT_EX_STRING);
+        for (CSVRecord rowEntries : rowParser) {
+            if (rowEntries.size() != keyList.size()) {
+                throw new IllegalArgumentException("Number of row entries is not equal to the number of columns");
+            }
+
             mapForSingleRow = getMapOfKeysAndRowEntries(keyList, rowEntries);
         }
 
-        return new ObjectMapper().writeValueAsString(mapForSingleRow);
+        return new ObjectMapper().writeValueAsBytes(mapForSingleRow);
     }
 
     private List<String> getListOfKeys(Set<String> keys) {
@@ -87,11 +97,6 @@ public class CSVLineParser {
     private Map<String, String> getMapOfKeysAndRowEntries(List<String> keys, CSVRecord rowEntries) {
         return IntStream.range(0, keys.size())
             .boxed()
-            .collect(Collectors.toMap(
-                keys::get,
-                rowEntries::get,
-                (key, value) -> {
-                    throw new IllegalArgumentException(ILLEGAL_ARGUMENT_EX_STRING); },
-                LinkedHashMap::new));
+            .collect(Collectors.toMap(keys::get, rowEntries::get));
     }
 }

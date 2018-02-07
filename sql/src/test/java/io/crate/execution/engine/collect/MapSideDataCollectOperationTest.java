@@ -87,7 +87,7 @@ public class MapSideDataCollectOperationTest extends CrateDummyClusterServiceUni
             Collections.emptyList(),
             null,
             false,
-            null
+            FileUriCollectPhase.InputFormat.JSON
         );
         String threadPoolName = JobCollectContext.threadPoolName(collectNode);
 

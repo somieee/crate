@@ -50,18 +50,4 @@ public class LineContextTest extends CrateUnitTest {
         assertEquals(43, subjectUnderTest.get(new ColumnIdent("details", "age")));
     }
 
-    @Test
-    public void rawSourceCSV_givenByteInputForHeaderAndRow_thenAssignsParsedJsonToRawSource() throws IOException {
-        String header = "name,id\n";
-        String line = "Arthur,4\n";
-
-        subjectUnderTest.rawSourceFromCSV(header.getBytes(StandardCharsets.UTF_8),line.getBytes(StandardCharsets.UTF_8));
-
-        thenRawSourceIsAssignedAs("{\"name\":\"Arthur\",\"id\":\"4\"}".getBytes(StandardCharsets.UTF_8));
-
-    }
-
-    private void thenRawSourceIsAssignedAs(byte[] expected) {
-        assertThat(subjectUnderTest.rawSource, is(expected));
-    }
 }

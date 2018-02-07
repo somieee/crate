@@ -24,7 +24,6 @@ package io.crate.analyze;
 
 import io.crate.execution.dsl.phases.FileUriCollectPhase;
 import io.crate.expression.symbol.Symbol;
-import io.crate.execution.dsl.projection.WriterProjection;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import io.crate.metadata.doc.DocTableInfo;
 import io.crate.types.DataType;

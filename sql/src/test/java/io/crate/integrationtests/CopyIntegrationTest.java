@@ -403,113 +403,6 @@ public class CopyIntegrationTest extends SQLHttpIntegrationTest {
     }
 
     @Test
-    public void testCopyFromNestedArrayRow() throws Exception {
-        // assert that rows with nested arrays aren't imported
-        execute("create table users (id int, " +
-            "name string) with (number_of_replicas=0)");
-        ensureYellow();
-        execute("copy users from ? with (shared=true)", new Object[]{
-            nestedArrayCopyFilePath + "nested_array_copy_from.json"});
-        assertEquals(1L, response.rowCount()); // only 1 document got inserted
-        refresh();
-
-        execute("select * from users");
-        assertThat(response.rowCount(), is(1L));
-
-        assertThat(TestingHelpers.printedTable(response.rows()), is("2| Trillian\n"));
-    }
-
-    @Test
-    public void testCopyFromWithRoutingInPK() throws Exception {
-        execute("create table t (i int primary key, c string primary key, a int)" +
-            " clustered by (c) with (number_of_replicas=0)");
-        ensureGreen();
-        execute("insert into t (i, c) values (1, 'clusteredbyvalue'), (2, 'clusteredbyvalue')");
-        refresh();
-
-        String uri = Paths.get(folder.getRoot().toURI()).toUri().toString();
-        SQLResponse response = execute("copy t to directory ?", new Object[]{uri});
-        assertThat(response.rowCount(), is(2L));
-
-        execute("delete from t");
-        refresh();
-
-        execute("copy t from ? with (shared=true)", new Object[]{uri + "t_*"});
-        refresh();
-
-        // only one shard should have all imported rows, since we have the same routing for both rows
-        response = execute("select count(*) from sys.shards where num_docs>0 and table_name='t'");
-        assertThat(response.rows()[0][0], is(1L));
-    }
-
-    @Test
-    public void testCopyFromTwoHttpUrls() throws Exception {
-        execute("create blob table blobs with (number_of_replicas = 0)");
-        execute("create table names (id int primary key, name string) with (number_of_replicas = 0)");
-        ensureYellow();
-
-        String r1 = "{\"id\": 1, \"name\":\"Marvin\"}";
-        String r2 = "{\"id\": 2, \"name\":\"Slartibartfast\"}";
-        String[] urls = {upload("blobs", r1), upload("blobs", r2)};
-
-        execute("copy names from ?", new Object[]{urls});
-        assertThat(response.rowCount(), is(2L));
-        execute("refresh table names");
-        execute("select name from names order by id");
-        assertThat(TestingHelpers.printedTable(response.rows()), is("Marvin\nSlartibartfast\n"));
-    }
-
-    @Test
-    public void testCopyFromTwoUriMixedSchemaAndWildcardUse() throws Exception {
-        execute("create blob table blobs with (number_of_replicas = 0)");
-        execute("create table names (id int primary key, name string) with (number_of_replicas = 0)");
-
-        Path tmpDir = newTempDir(LifecycleScope.TEST);
-        File file = new File(tmpDir.toFile(), "names.json");
-        String r1 = "{\"id\": 1, \"name\": \"Arthur\"}";
-        String r2 = "{\"id\": 2, \"name\":\"Slartibartfast\"}";
-
-        Files.write(file.toPath(), Collections.singletonList(r1), StandardCharsets.UTF_8);
-        String[] urls = {tmpDir.toUri().toString() + "*.json", upload("blobs", r2)};
-
-        execute("copy names from ?", new Object[]{urls});
-        assertThat(response.rowCount(), is(2L));
-        execute("refresh table names");
-        execute("select name from names order by id");
-        assertThat(TestingHelpers.printedTable(response.rows()), is("Arthur\nSlartibartfast\n"));
-    }
-
-    @Test
-    public void testCopyFromIntoTableWithClusterBy() throws Exception {
-        execute("create table quotes (id int, quote string) " +
-            "clustered by (id)" +
-            "with (number_of_replicas = 0)");
-        ensureYellow();
-
-        execute("copy quotes from ? with (shared = true)", new Object[]{copyFilePath + "test_copy_from.json"});
-        assertEquals(3L, response.rowCount());
-        refresh();
-
-        execute("select quote from quotes where id = 2");
-        assertThat((String) response.rows()[0][0], containsString("lot of time"));
-    }
-
-    @Test
-    public void testCopyFromIntoTableWithPkAndClusterBy() throws Exception {
-        execute("create table quotes (id int primary key, quote string) " +
-            "clustered by (id)" +
-            "with (number_of_replicas = 0)");
-        ensureYellow();
-
-        execute("copy quotes from ?", new Object[]{copyFilePath + "test_copy_from.json"});
-        assertEquals(3L, response.rowCount());
-        refresh();
-
-        execute("select quote from quotes where id = 3");
-        assertThat((String) response.rows()[0][0], containsString("Time is an illusion."));
-    }
-
-    @Test
     public void testCopyToFile() throws Exception {
         expectedException.expect(SQLActionException.class);
         expectedException.expectMessage(containsString("Using COPY TO without specifying a DIRECTORY is not supported"));
@@ -641,6 +534,23 @@ public class CopyIntegrationTest extends SQLHttpIntegrationTest {
     }
 
     @Test
+    public void testCopyFromNestedArrayRow() throws Exception {
+        // assert that rows with nested arrays aren't imported
+        execute("create table users (id int, " +
+            "name string) with (number_of_replicas=0)");
+        ensureYellow();
+        execute("copy users from ? with (shared=true)", new Object[]{
+            nestedArrayCopyFilePath + "nested_array_copy_from.json"});
+        assertEquals(1L, response.rowCount()); // only 1 document got inserted
+        refresh();
+
+        execute("select * from users");
+        assertThat(response.rowCount(), is(1L));
+
+        assertThat(TestingHelpers.printedTable(response.rows()), is("2| Trillian\n"));
+    }
+
+    @Test
     public void testCopyToWithGeneratedColumn() throws Exception {
         execute("CREATE TABLE foo (\n" +
                 "day TIMESTAMP GENERATED ALWAYS AS date_trunc('day', timestamp),\n" +
@@ -653,6 +563,96 @@ public class CopyIntegrationTest extends SQLHttpIntegrationTest {
         String uriTemplate = Paths.get(folder.getRoot().toURI()).toUri().toString();
         SQLResponse response = execute("copy foo to DIRECTORY ?", new Object[]{uriTemplate});
         assertThat(response.rowCount(), is(1L));
+    }
+
+    @Test
+    public void testCopyFromWithRoutingInPK() throws Exception {
+        execute("create table t (i int primary key, c string primary key, a int)" +
+            " clustered by (c) with (number_of_replicas=0)");
+        ensureGreen();
+        execute("insert into t (i, c) values (1, 'clusteredbyvalue'), (2, 'clusteredbyvalue')");
+        refresh();
+
+        String uri = Paths.get(folder.getRoot().toURI()).toUri().toString();
+        SQLResponse response = execute("copy t to directory ?", new Object[]{uri});
+        assertThat(response.rowCount(), is(2L));
+
+        execute("delete from t");
+        refresh();
+
+        execute("copy t from ? with (shared=true)", new Object[]{uri + "t_*"});
+        refresh();
+
+        // only one shard should have all imported rows, since we have the same routing for both rows
+        response = execute("select count(*) from sys.shards where num_docs>0 and table_name='t'");
+        assertThat(response.rows()[0][0], is(1L));
+    }
+
+    @Test
+    public void testCopyFromTwoHttpUrls() throws Exception {
+        execute("create blob table blobs with (number_of_replicas = 0)");
+        execute("create table names (id int primary key, name string) with (number_of_replicas = 0)");
+        ensureYellow();
+
+        String r1 = "{\"id\": 1, \"name\":\"Marvin\"}";
+        String r2 = "{\"id\": 2, \"name\":\"Slartibartfast\"}";
+        String[] urls = {upload("blobs", r1), upload("blobs", r2)};
+
+        execute("copy names from ?", new Object[]{urls});
+        assertThat(response.rowCount(), is(2L));
+        execute("refresh table names");
+        execute("select name from names order by id");
+        assertThat(TestingHelpers.printedTable(response.rows()), is("Marvin\nSlartibartfast\n"));
+    }
+
+    @Test
+    public void testCopyFromTwoUriMixedSchemaAndWildcardUse() throws Exception {
+        execute("create blob table blobs with (number_of_replicas = 0)");
+        execute("create table names (id int primary key, name string) with (number_of_replicas = 0)");
+
+        Path tmpDir = newTempDir(LifecycleScope.TEST);
+        File file = new File(tmpDir.toFile(), "names.json");
+        String r1 = "{\"id\": 1, \"name\": \"Arthur\"}";
+        String r2 = "{\"id\": 2, \"name\":\"Slartibartfast\"}";
+
+        Files.write(file.toPath(), Collections.singletonList(r1), StandardCharsets.UTF_8);
+        String[] urls = {tmpDir.toUri().toString() + "*.json", upload("blobs", r2)};
+
+        execute("copy names from ?", new Object[]{urls});
+        assertThat(response.rowCount(), is(2L));
+        execute("refresh table names");
+        execute("select name from names order by id");
+        assertThat(TestingHelpers.printedTable(response.rows()), is("Arthur\nSlartibartfast\n"));
+    }
+
+    @Test
+    public void testCopyFromIntoTableWithClusterBy() throws Exception {
+        execute("create table quotes (id int, quote string) " +
+            "clustered by (id)" +
+            "with (number_of_replicas = 0)");
+        ensureYellow();
+
+        execute("copy quotes from ? with (shared = true)", new Object[]{copyFilePath + "test_copy_from.json"});
+        assertEquals(3L, response.rowCount());
+        refresh();
+
+        execute("select quote from quotes where id = 2");
+        assertThat((String) response.rows()[0][0], containsString("lot of time"));
+    }
+
+    @Test
+    public void testCopyFromIntoTableWithPkAndClusterBy() throws Exception {
+        execute("create table quotes (id int primary key, quote string) " +
+            "clustered by (id)" +
+            "with (number_of_replicas = 0)");
+        ensureYellow();
+
+        execute("copy quotes from ?", new Object[]{copyFilePath + "test_copy_from.json"});
+        assertEquals(3L, response.rowCount());
+        refresh();
+
+        execute("select quote from quotes where id = 3");
+        assertThat((String) response.rows()[0][0], containsString("Time is an illusion."));
     }
 
     private Path setUpTableAndSymlink(String tableName) throws IOException {

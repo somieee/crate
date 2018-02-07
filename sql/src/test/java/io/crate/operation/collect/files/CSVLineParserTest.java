@@ -15,7 +15,7 @@ public class CSVLineParserTest {
 
     private static byte[] headerByteArray;
     private static byte[] rowByteArray;
-    private String result;
+    private byte[] result;
 
     @Before
     public void setup(){
@@ -61,7 +61,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Code\":\"GER\",\"Country\":\"Germany\"}");
+        thenResultIs("{\"Country\":\"Germany\",\"Code\":\"GER\"}");
     }
 
     @Test
@@ -81,7 +81,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Code\":\"GER\",\"Coun, try\":\"Germany\"}");
+        thenResultIs("{\"Coun, try\":\"Germany\",\"Code\":\"GER\"}");
     }
 
 
@@ -92,7 +92,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Code\":\"GER\",\"Country\":\"\",\"City\":\"Berlin\"}");
+        thenResultIs("{\"Country\":\"\",\"City\":\"Berlin\",\"Code\":\"GER\"}");
     }
 
 
@@ -103,7 +103,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Code\":\"GER\",\"Country\":\"Germany\"}");
+        thenResultIs("{\"Country\":\"Germany\",\"Code\":\"GER\"}");
     }
 
     @Test
@@ -113,7 +113,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Code\":\"GER\",\"Country\":\"Germany\"}");
+        thenResultIs("{\"Country\":\"Germany\",\"Code\":\"GER\"}");
     }
 
     @Test
@@ -123,7 +123,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Code\":\"GER\",\"Country\":\"Germany\"}");
+        thenResultIs("{\"Country\":\"Germany\",\"Code\":\"GER\"}");
     }
 
     @Test
@@ -133,7 +133,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Code\":\"GER\",\"Country\":\"Germany\"}");
+        thenResultIs("{\"Country\":\"Germany\",\"Code\":\"GER\"}");
     }
 
     private void givenHeader(String header) {
@@ -148,8 +148,8 @@ public class CSVLineParserTest {
         result = subjectUnderTest.parse(headerByteArray, rowByteArray);
     }
 
-    private void thenResultIs(String expected) throws IOException {
-        assertThat(result, is(expected));
+    private void thenResultIs(String expected) {
+        assertThat(result, is(expected.getBytes(StandardCharsets.UTF_8)));
     }
 
 }

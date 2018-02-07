@@ -31,7 +31,6 @@ import io.crate.data.Row;
 import io.crate.execution.dsl.phases.FileUriCollectPhase;
 import io.crate.expression.InputRow;
 import io.crate.expression.reference.file.LineContext;
-import io.crate.execution.dsl.projection.WriterProjection;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchParseException;
 import org.elasticsearch.common.collect.Tuple;
@@ -52,7 +51,6 @@ import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.ArrayList;
@@ -88,7 +86,7 @@ public class FileReadingIterator implements BatchIterator<Row> {
     private long currentLineNumber;
     private LineContext lineContext;
     private final Row row;
-    private Optional<String> csvHeader;
+    private LineProcessor lineProcessor;
 
     private FileReadingIterator(Collection<String> fileUris,
                                 List<? extends Input<?>> inputs,
@@ -146,11 +144,8 @@ public class FileReadingIterator implements BatchIterator<Row> {
     }
 
     private void initCollectorState() {
-        lineContext = new LineContext();
-
-        for (LineCollectorExpression<?> collectorExpression : collectorExpressions) {
-            collectorExpression.startCollect(lineContext);
-        }
+        lineProcessor = new LineProcessor();
+        lineProcessor.startCollect(collectorExpressions);
 
         List<Tuple<FileInput, UriWithGlob>> fileInputs = new ArrayList<>(urisWithGlob.size());
         for (UriWithGlob fileUri : urisWithGlob) {
@@ -178,14 +173,8 @@ public class FileReadingIterator implements BatchIterator<Row> {
                     closeCurrentReader();
                     return moveNext();
                 }
-
-                if (csvHeader.isPresent()) {
-                    processAsCSV(csvHeader.get(), line);
-                    return true;
-                } else {
-                    processAsJsonLine(line);
-                }
-
+                System.out.println("This line" + line);
+                lineProcessor.process(line, inputFormat, currentUri);
                 return true;
             } else if (currentInputIterator != null && currentInputIterator.hasNext()) {
                 advanceToNextUri(currentInput.v1());
@@ -201,18 +190,6 @@ public class FileReadingIterator implements BatchIterator<Row> {
             rethrowUnchecked(e);
         }
         return false;
-    }
-
-    private boolean isInputCsv() {
-        return (inputFormat == FileUriCollectPhase.InputFormat.CSV) || currentUri.toString().endsWith(".csv");
-    }
-
-    private void processAsJsonLine(String line) {
-        lineContext.rawSource(line.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private void processAsCSV(String header, String line) throws IOException {
-        lineContext.rawSourceFromCSV(header.getBytes(StandardCharsets.UTF_8), line.getBytes(StandardCharsets.UTF_8));
     }
 
     private void advanceToNextUri(FileInput fileInput) throws IOException {
@@ -237,8 +214,8 @@ public class FileReadingIterator implements BatchIterator<Row> {
         InputStream stream = fileInput.getStream(uri);
         if (stream != null) {
             currentReader = createBufferedReader(stream);
-            csvHeader = Optional.ofNullable(isInputCsv() ? currentReader.readLine() : null);
-            currentLineNumber = (isInputCsv() ? 1 : 0);
+            currentLineNumber = 0;
+            lineProcessor.readFirstLine(currentUri, inputFormat, currentReader);
         }
     }
 

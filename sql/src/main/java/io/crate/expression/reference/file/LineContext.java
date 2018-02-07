@@ -22,15 +22,12 @@
 package io.crate.expression.reference.file;
 
 import io.crate.metadata.ColumnIdent;
-import io.crate.operation.collect.files.CSVLineParser;
 import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentType;
 
 import javax.annotation.Nullable;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 public class LineContext {
@@ -71,14 +68,6 @@ public class LineContext {
 
     public void rawSource(byte[] bytes) {
         this.rawSource = bytes;
-        this.parsedSource = null;
-    }
-
-    public void rawSourceFromCSV(byte[] header, byte[] line) throws IOException {
-        CSVLineParser csvParser = new CSVLineParser();
-        String convertedCsvToJsonString = csvParser.parse(header, line);
-
-        this.rawSource = convertedCsvToJsonString.getBytes(StandardCharsets.UTF_8);
         this.parsedSource = null;
     }
 }
