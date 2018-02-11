@@ -1,6 +1,5 @@
 package io.crate.operation.collect.files;
 
-import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -11,16 +10,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 public class CSVLineParserTest {
 
-    CSVLineParser subjectUnderTest;
-
     private static byte[] headerByteArray;
     private static byte[] rowByteArray;
     private byte[] result;
-
-    @Before
-    public void setup(){
-        subjectUnderTest = new CSVLineParser();
-    }
 
     @Test(expected = IllegalArgumentException.class)
     public void parse_givenEmptyHeader_thenThrowsException() throws IOException {
@@ -61,7 +53,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Country\":\"Germany\",\"Code\":\"GER\"}");
+        assertThat(result, is("{\"Country\":\"Germany\",\"Code\":\"GER\"}".getBytes(StandardCharsets.UTF_8)));
     }
 
     @Test
@@ -71,7 +63,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{}");
+        assertThat(result, is("{}".getBytes(StandardCharsets.UTF_8)));
     }
 
     @Test
@@ -81,7 +73,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Coun, try\":\"Germany\",\"Code\":\"GER\"}");
+        assertThat(result, is("{\"Coun, try\":\"Germany\",\"Code\":\"GER\"}".getBytes(StandardCharsets.UTF_8)));
     }
 
 
@@ -92,7 +84,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Country\":\"\",\"City\":\"Berlin\",\"Code\":\"GER\"}");
+        assertThat(result, is("{\"Country\":\"\",\"City\":\"Berlin\",\"Code\":\"GER\"}".getBytes(StandardCharsets.UTF_8)));
     }
 
 
@@ -103,7 +95,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Country\":\"Germany\",\"Code\":\"GER\"}");
+        assertThat(result, is("{\"Country\":\"Germany\",\"Code\":\"GER\"}".getBytes(StandardCharsets.UTF_8)));
     }
 
     @Test
@@ -113,7 +105,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Country\":\"Germany\",\"Code\":\"GER\"}");
+        assertThat(result, is("{\"Country\":\"Germany\",\"Code\":\"GER\"}".getBytes(StandardCharsets.UTF_8)));
     }
 
     @Test
@@ -123,7 +115,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Country\":\"Germany\",\"Code\":\"GER\"}");
+        assertThat(result, is("{\"Country\":\"Germany\",\"Code\":\"GER\"}".getBytes(StandardCharsets.UTF_8)));
     }
 
     @Test
@@ -133,7 +125,7 @@ public class CSVLineParserTest {
 
         whenParseIsCalled();
 
-        thenResultIs("{\"Country\":\"Germany\",\"Code\":\"GER\"}");
+        assertThat(result, is("{\"Country\":\"Germany\",\"Code\":\"GER\"}".getBytes(StandardCharsets.UTF_8)));
     }
 
     private void givenHeader(String header) {
@@ -145,11 +137,6 @@ public class CSVLineParserTest {
     }
 
     private void whenParseIsCalled() throws IOException {
-        result = subjectUnderTest.parse(headerByteArray, rowByteArray);
+        result = CSVLineParser.parse(headerByteArray, rowByteArray);
     }
-
-    private void thenResultIs(String expected) {
-        assertThat(result, is(expected.getBytes(StandardCharsets.UTF_8)));
-    }
-
 }

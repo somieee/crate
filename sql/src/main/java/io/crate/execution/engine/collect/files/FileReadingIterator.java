@@ -30,7 +30,6 @@ import io.crate.data.Input;
 import io.crate.data.Row;
 import io.crate.execution.dsl.phases.FileUriCollectPhase;
 import io.crate.expression.InputRow;
-import io.crate.expression.reference.file.LineContext;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchParseException;
 import org.elasticsearch.common.collect.Tuple;
@@ -84,7 +83,6 @@ public class FileReadingIterator implements BatchIterator<Row> {
     private URI currentUri;
     private BufferedReader currentReader = null;
     private long currentLineNumber;
-    private LineContext lineContext;
     private final Row row;
     private LineProcessor lineProcessor;
 
@@ -105,7 +103,7 @@ public class FileReadingIterator implements BatchIterator<Row> {
                     return inputs.get(index).value();
                 } catch (ElasticsearchParseException e) {
                     throw new ElasticsearchParseException(String.format(Locale.ENGLISH,
-                        "Failed to parse JSON in line: %d in file: \"%s\"%n" +
+                        "Failed to parse input in line: %d in file: \"%s\"%n" +
                             "Original error message: %s", currentLineNumber, currentUri, e.getMessage()), e);
                 }
             }

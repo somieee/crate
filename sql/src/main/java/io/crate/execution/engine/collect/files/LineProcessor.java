@@ -64,7 +64,6 @@ public class LineProcessor {
     }
 
     private byte[] convertCsvToJson(String header, byte[] lineAsByteArray) throws IOException {
-        CSVLineParser csvParser = new CSVLineParser();
-        return csvParser.parse(header.getBytes(StandardCharsets.UTF_8), lineAsByteArray);
+        return CSVLineParser.parse(header.getBytes(StandardCharsets.UTF_8), lineAsByteArray);
     }
 }

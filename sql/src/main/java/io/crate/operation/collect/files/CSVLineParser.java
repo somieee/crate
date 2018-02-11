@@ -42,7 +42,7 @@ import java.util.stream.IntStream;
 
 public class CSVLineParser {
 
-    public byte[] parse(byte[] header, byte[] row) throws IOException {
+    public static byte[] parse(byte[] header, byte[] row) throws IOException {
 
         ByteArrayInputStream headerInputStream = new ByteArrayInputStream(header);
         ByteArrayInputStream rowInputStream = new ByteArrayInputStream(row);
@@ -73,7 +73,7 @@ public class CSVLineParser {
         }
     }
 
-    private byte[] convertCSVToJsonString(Set<String> keys, CSVParser rowParser) throws JsonProcessingException {
+    private static byte[] convertCSVToJsonString(Set<String> keys, CSVParser rowParser) throws JsonProcessingException {
         Map<String,String> mapForSingleRow = Collections.emptyMap();
 
         List<String> keyList = getListOfKeys(keys);
@@ -89,12 +89,12 @@ public class CSVLineParser {
         return new ObjectMapper().writeValueAsBytes(mapForSingleRow);
     }
 
-    private List<String> getListOfKeys(Set<String> keys) {
+    private static List<String> getListOfKeys(Set<String> keys) {
         keys.removeIf(item -> item == null || "".equals(item));
         return new ArrayList<>(keys);
     }
 
-    private Map<String, String> getMapOfKeysAndRowEntries(List<String> keys, CSVRecord rowEntries) {
+    private static Map<String, String> getMapOfKeysAndRowEntries(List<String> keys, CSVRecord rowEntries) {
         return IntStream.range(0, keys.size())
             .boxed()
             .collect(Collectors.toMap(keys::get, rowEntries::get));

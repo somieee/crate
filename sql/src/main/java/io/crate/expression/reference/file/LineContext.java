@@ -32,7 +32,7 @@ import java.util.Map;
 
 public class LineContext {
 
-    public byte[] rawSource;
+    private byte[] rawSource;
     private Map<String, Object> parsedSource;
 
     @Nullable
@@ -41,6 +41,17 @@ public class LineContext {
             return new BytesRef(rawSource);
         }
         return null;
+    }
+
+    public Map<String, Object> sourceAsMap() {
+        if (parsedSource == null) {
+            try {
+                parsedSource = XContentHelper.convertToMap(new BytesArray(rawSource), false, XContentType.JSON).v2();
+            } catch (NullPointerException e) {
+                return null;
+            }
+        }
+        return parsedSource;
     }
 
     public Object get(ColumnIdent columnIdent) {
@@ -53,17 +64,6 @@ public class LineContext {
             return new BytesRef((String) val);
         }
         return val;
-    }
-
-    public Map<String, Object> sourceAsMap() {
-        if (parsedSource == null) {
-            try {
-                parsedSource = XContentHelper.convertToMap(new BytesArray(rawSource), false, XContentType.JSON).v2();
-            } catch (NullPointerException e) {
-                return null;
-            }
-        }
-        return parsedSource;
     }
 
     public void rawSource(byte[] bytes) {
