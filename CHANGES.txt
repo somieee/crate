@@ -21,6 +21,10 @@ Changes
 - Implemented a `Ready` node status JMX metric expressing if the node is ready
   for processing SQL statements.
 
+- Added support for CSV file inputs in `COPY FROM` statements. Input type can be
+  set using the file's extension or using the optional `WITH` clause and
+  specifying the `format`.
+
 Fixes
 =====
 
