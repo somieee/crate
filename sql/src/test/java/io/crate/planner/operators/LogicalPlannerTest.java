@@ -238,6 +238,35 @@ public class LogicalPlannerTest extends CrateDummyClusterServiceUnitTest {
                                    "Collect[doc.t1 | [x, a] | All]\n"));
     }
 
+    @Test
+    public void testInnerJoinWithScalarInOrderBy() {
+        LogicalPlan plan = plan("select t1.i, t2.i, lower(t2.b) " +
+                                "from t2 inner join t1 on t1.i = t2.i " +
+                                "order by lower(t2.b)");
+        assertThat(plan, isPlan("FetchOrEval[i, i, lower(b)]\n" +
+                                "Join[\n" +
+                                "    Boundary[i, lower(b), b]\n" +
+                                "    OrderBy['lower(b)' ASC]\n" +
+                                "    Collect[doc.t2 | [i, lower(b), b] | All]\n" +
+                                "    --- INNER ---\n" +
+                                "    Boundary[i]\n" +
+                                "    Collect[doc.t1 | [i] | All]\n" +
+                                "]\n"));
+
+        plan = plan("select t1.i, t2.i " +
+                    "from t2 inner join t1 on t1.i = t2.i " +
+                    "order by lower(t2.b)");
+        assertThat(plan, isPlan("FetchOrEval[i, i]\n" +
+                                "Join[\n" +
+                                "    Boundary[i, lower(b)]\n" +
+                                "    OrderBy['lower(b)' ASC]\n" +
+                                "    Collect[doc.t2 | [i, lower(b)] | All]\n" +
+                                "    --- INNER ---\n" +
+                                "    Boundary[i]\n" +
+                                "    Collect[doc.t1 | [i] | All]\n" +
+                                "]\n"));
+    }
+
     public static LogicalPlan plan(String statement,
                                    SQLExecutor sqlExecutor,
                                    ClusterService clusterService,

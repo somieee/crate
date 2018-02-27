@@ -176,6 +176,30 @@ public class JoinIntegrationTest extends SQLTransportIntegrationTest {
     }
 
     @Test
+    public void testOrderByScalar() {
+        execute("create table t1 (id integer)");
+        execute("create table t2 (id integer, name string, id_t1 integer)");
+        execute("insert into t1 (id) values (1), (2)");
+        execute("insert into t2 (id, name, id_t1) values (1, 'B', 1), (2, 'A', 1), (3, 'C', 2)");
+        execute("refresh table t1, t2");
+        // reference as argument in scalar but not in select list
+        execute("select t1.id, t2.id " +
+                "from t2 inner join t1 on t1.id = t2.id_t1 " +
+                "order by lower(t2.name)");
+        assertThat(printedTable(response.rows()), is("1| 2\n" +
+                                                     "1| 1\n" +
+                                                     "2| 3\n"));
+
+        // reference as argument in scalar and also in select list
+        execute("select t1.id, t2.id, lower(t2.name) " +
+                "from t2 inner join t1 on t1.id = t2.id_t1 " +
+                "order by lower(t2.name)");
+        assertThat(printedTable(response.rows()), is("1| 2| a\n" +
+                                                     "1| 1| b\n" +
+                                                     "2| 3| c\n"));
+    }
+
+    @Test
     public void testCrossJoinWithoutLimitAndOrderByAndCrossJoinSyntax() throws Exception {
         createColorsAndSizes();
         execute("select colors.name, sizes.name from colors cross join sizes");

@@ -145,13 +145,15 @@ public final class RelationSplitter {
         for (Map.Entry<AnalyzedRelation, QuerySpec> entry : specs.entrySet()) {
             OrderBy orderBy = entry.getValue().orderBy();
             if (orderBy != null) {
-                FieldsVisitor.visitFields(orderBy.orderBySymbols(), addFieldToMap);
+                for (Symbol symbol : orderBy.orderBySymbols()) {
+                    fieldsByRelation.put(entry.getKey(), symbol);
+                }
             }
         }
 
         FieldsVisitor.visitFields(querySpec.outputs(), addFieldToMap);
         for (Symbol symbol : requiredForMerge) {
-            FieldsVisitor.visitFields(symbol, addFieldToMap::accept);
+            FieldsVisitor.visitFields(symbol, addFieldToMap);
         }
 
         // generate the outputs of the subSpecs
