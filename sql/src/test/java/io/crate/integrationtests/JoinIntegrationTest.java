@@ -871,4 +871,18 @@ public class JoinIntegrationTest extends SQLTransportIntegrationTest {
             is("0| 0| 0\n" +
                "1| 1| 1\n"));
     }
+
+    @Test
+    public void testFoo() {
+        execute("CREATE TABLE t1 (id INTEGER)");
+        execute("CREATE TABLE t2 (id INTEGER, name STRING, id_t1 INTEGER)");
+
+        execute("INSERT INTO t1 (id) VALUES (1), (2)");
+        execute("INSERT INTO t2 (id, name, id_t1) VALUES (1, 'A', 1), (2, 'B', 2), (3, 'C', 2)");
+        execute("REFRESH TABLE t1, t2");
+
+        execute("SELECT t1.id, t2.id FROM t2 INNER JOIN t1 ON t1.id = t2.id_t1 ORDER BY lower(t2.name)");
+        execute("SELECT t1.id, t2.id, t2.name FROM t2 INNER JOIN t1 ON t1.id = t2.id_t1 ORDER BY lower(t2.name)");
+        execute("SELECT t1.id, t2.id, lower(t2.name) FROM t2 INNER JOIN t1 ON t1.id = t2.id_t1 ORDER BY lower(t2.name)");
+    }
 }

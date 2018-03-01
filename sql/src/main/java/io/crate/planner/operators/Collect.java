@@ -59,6 +59,7 @@ import io.crate.planner.ExplainLeaf;
 import io.crate.planner.PlannerContext;
 import io.crate.planner.PositionalOrderBy;
 import io.crate.planner.TableStats;
+import io.crate.planner.consumer.OrderByPositionVisitor;
 import io.crate.planner.distribution.DistributionInfo;
 
 import javax.annotation.Nullable;
@@ -188,7 +189,19 @@ class Collect extends ZeroInputPlan {
                                Map<SelectSymbol, Object> subQueryValues) {
         RoutedCollectPhase collectPhase = createPhase(plannerContext, params, subQueryValues);
         relation.tableRelation().validateOrderBy(order);
-        collectPhase.orderBy(order);
+
+        final PositionalOrderBy positionalOrderBy;
+        if (order == null) {
+            positionalOrderBy = null;
+        } else {
+            int[] positions = OrderByPositionVisitor.orderByPositionsOrNull(order.orderBySymbols(), outputs);
+            if (positions == null) {
+                positionalOrderBy = null;
+            } else {
+                collectPhase.orderBy(order);
+                positionalOrderBy = new PositionalOrderBy(positions, order.reverseFlags(), order.nullsFirst());
+            }
+        }
         int limitAndOffset = limitAndOffset(limit, offset);
         maybeApplyPageSize(limitAndOffset, pageSizeHint, collectPhase);
         return new io.crate.planner.node.dql.Collect(
@@ -197,7 +210,7 @@ class Collect extends ZeroInputPlan {
             0,
             outputs.size(),
             limitAndOffset,
-            PositionalOrderBy.of(order, outputs)
+            positionalOrderBy
         );
     }
 

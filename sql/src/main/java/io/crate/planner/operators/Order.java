@@ -28,18 +28,22 @@ import io.crate.data.Row;
 import io.crate.execution.dsl.projection.OrderedTopNProjection;
 import io.crate.execution.dsl.projection.builder.InputColumns;
 import io.crate.execution.dsl.projection.builder.ProjectionBuilder;
+import io.crate.expression.symbol.RefVisitor;
 import io.crate.expression.symbol.SelectSymbol;
 import io.crate.expression.symbol.Symbol;
+import io.crate.metadata.Reference;
 import io.crate.planner.ExecutionPlan;
 import io.crate.planner.Merge;
 import io.crate.planner.PlannerContext;
 import io.crate.planner.PositionalOrderBy;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 class Order extends OneInputPlan {
 
@@ -131,14 +135,26 @@ class Order extends OneInputPlan {
         // See tryOptimize of Union
         List<Symbol> oldOutputs = source.outputs();
         List<Symbol> newOutputs = newSource.outputs();
+        Function<Symbol, Symbol> mapper = OperatorUtils.getMapper(source.expressionMapping());
         OrderBy newOrderBy = this.orderBy.copyAndReplace(
             (symbol) -> {
-                int idx = oldOutputs.indexOf(symbol);
-                if (idx != -1) {
-                    return newOutputs.get(idx);
+                if (newOutputs.contains(symbol)) {
+                    return symbol;
                 }
-                throw new IllegalStateException("All symbols of this OrderBy should be replaceable " +
-                                                "with Symbols of the new source.");
+                Symbol mappedSymbol = mapper.apply(symbol);
+                if (newOutputs.contains(mappedSymbol)) {
+                    return mappedSymbol;
+                }
+                ArrayList<Reference> refs = new ArrayList<>();
+                RefVisitor.visitRefs(mappedSymbol, refs::add);
+
+                for (Reference ref : refs) {
+                    if (!newOutputs.contains(ref)) {
+                        throw new IllegalStateException("All symbols of this OrderBy should be replaceable " +
+                                                        "with Symbols of the new source.");
+                    }
+                }
+                return mappedSymbol;
             }
         );
         return new Order(newSource, newOrderBy);
