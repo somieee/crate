@@ -42,6 +42,7 @@ import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
 import io.crate.testing.SQLExecutor;
 import io.crate.testing.T3;
 import io.crate.types.DataTypes;
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -49,9 +50,9 @@ import java.util.Collections;
 
 import static io.crate.testing.TestingHelpers.getFunctions;
 import static java.util.Collections.emptyMap;
-import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.collection.IsIterableContainingInOrder.contains;
 
 public class JoinTest extends CrateDummyClusterServiceUnitTest {
 
@@ -113,6 +114,33 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
 
         TableStats tableStats = new TableStats();
         ObjectObjectHashMap<TableIdent, TableStats.Stats> rowCountByTable = new ObjectObjectHashMap<>();
+        rowCountByTable.put(TableDefinitions.USER_TABLE_IDENT, new TableStats.Stats(100, 0));
+        rowCountByTable.put(TableDefinitions.TEST_DOC_LOCATIONS_TABLE_IDENT, new TableStats.Stats(10, 0));
+        tableStats.updateTableStats(rowCountByTable);
+
+        PlannerContext context = e.getPlannerContext(clusterService.state());
+        LogicalPlanner logicalPlanner = new LogicalPlanner(functions, tableStats);
+        SubqueryPlanner subqueryPlanner = new SubqueryPlanner((s) -> logicalPlanner.planSubSelect(s, context));
+        SessionContext sessionContext = SessionContext.create();
+        sessionContext.setHashJoinEnabled(true);
+        LogicalPlan operator = JoinPlanBuilder.createNodes(mss, mss.where(), subqueryPlanner,  sessionContext)
+            .build(tableStats, Collections.emptySet());
+        assertThat(operator, instanceOf(HashJoin.class));
+        assertThat(((HashJoin) operator).concreteRelation.toString(), is("QueriedTable{DocTableRelation{doc.locations}}"));
+
+        Join join = (Join) operator.build(context, projectionBuilder, -1, 0, null, null, Row.EMPTY, emptyMap());
+        assertThat(join.joinPhase().leftMergePhase().inputTypes(), contains(DataTypes.LONG, DataTypes.LONG));
+        assertThat(join.joinPhase().rightMergePhase().inputTypes(), contains(DataTypes.LONG));
+    }
+
+    @Test
+    public void testHashJoinTablesSwitchWhenRightBiggerThanLeft() {
+        MultiSourceSelect mss = e.analyze("select users.name, locations.id " +
+                                          "from users " +
+                                          "join locations on users.id = locations.id");
+
+        TableStats tableStats = new TableStats();
+        ObjectObjectHashMap<TableIdent, TableStats.Stats> rowCountByTable = new ObjectObjectHashMap<>();
         rowCountByTable.put(TableDefinitions.USER_TABLE_IDENT, new TableStats.Stats(10, 0));
         rowCountByTable.put(TableDefinitions.TEST_DOC_LOCATIONS_TABLE_IDENT, new TableStats.Stats(100, 0));
         tableStats.updateTableStats(rowCountByTable);
@@ -125,12 +153,12 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
         LogicalPlan operator = JoinPlanBuilder.createNodes(mss, mss.where(), subqueryPlanner,  sessionContext)
             .build(tableStats, Collections.emptySet());
         assertThat(operator, instanceOf(HashJoin.class));
-        assertThat(((HashJoin) operator).topMostLeftRelation.toString(), is("QueriedTable{DocTableRelation{doc.users}}"));
-        assertThat(((HashJoin) operator).rightRelation.toString(), is("QueriedTable{DocTableRelation{doc.locations}}"));
+        assertThat(((HashJoin) operator).concreteRelation.toString(), is("QueriedTable{DocTableRelation{doc.locations}}"));
 
         Join join = (Join) operator.build(context, projectionBuilder, -1, 0, null, null, Row.EMPTY, emptyMap());
-        assertThat(join.joinPhase().leftMergePhase().inputTypes(), contains(DataTypes.LONG, DataTypes.LONG));
-        assertThat(join.joinPhase().rightMergePhase().inputTypes(), contains(DataTypes.LONG));
+        // Plans must be switched (left<->right)
+        assertThat(join.joinPhase().leftMergePhase().inputTypes(), Matchers.contains(DataTypes.LONG));
+        assertThat(join.joinPhase().rightMergePhase().inputTypes(), Matchers.contains(DataTypes.LONG, DataTypes.LONG));
     }
 
     @Test
