@@ -158,7 +158,7 @@ public class HashInnerJoinBatchIterator<L extends Row, R extends Row, C> extends
     }
 
     private void recreateBuffer() {
-        blockSize = calculateBlockSize(circuitBreaker, estimatedRowSizeForLeft, numberOfRowsForLeft);
+        blockSize = 100;
         this.buffer = new IntObjectHashMap<>(this.blockSize);
         numberOfRowsInBuffer = 0;
     }
